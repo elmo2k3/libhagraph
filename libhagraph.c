@@ -15,13 +15,20 @@
 
 #include "libhagraph.h"
 
-#define MYSQL_SERVER    "88.198.17.204"
+#define MYSQL_SERVER    "192.168.2.1"
 #define MYSQL_USER      "home_automation"
 #define MYSQL_PASS      "rfm12"
 #define MYSQL_DB        "home_automation"
 #define MYSQL_DB_WS2000	"wetterstation"
 
 static int IMG_WIDTH, IMG_HEIGHT;
+
+static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *title);
+static void getMaxMinValues(MYSQL *mysql_connection, const char *time_from, const char *time_to, float *max, int *sec_max, float *min, int modul, int sensor);
+static int transformY(float temperature, float max, float min);
+static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min);
+static void drawYLegend(gdImagePtr im, float temp_max, float temp_min, int color);
+static int decideView(char *time_from, char *time_to);
 
 int createGraph(const char *filename, int width, int heigth, const char *time_from,
 		const char *time_to, int *modul, int *sensor, int numGraphs)
@@ -47,7 +54,7 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	if (!mysql_real_connect(mysql_connection, MYSQL_SERVER, MYSQL_USER, MYSQL_PASS, MYSQL_DB, 0, NULL, 0))
 	{
 		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-		exit(0);
+		return -1;
 	}
 	mysql_connection->reconnect=1;
 	
@@ -85,12 +92,6 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	return 0;
 }
 
-static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *title);
-static void getMaxMinValues(MYSQL *mysql_connection, const char *time_from, const char *time_to, float *max, int *sec_max, float *min, int modul, int sensor);
-static int transformY(float temperature, float max, float min);
-static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min);
-static void drawYLegend(gdImagePtr im, float temp_max, float temp_min, int color);
-static int decideView(char *time_from, char *time_to);
 
 /* 
  * X-Achse zeichnen
@@ -192,7 +193,7 @@ static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const ch
 		sprintf(query,"SELECT TIME_TO_SEC(time), DAYOFWEEK(date), DAYOFMONTH(date), DAYOFYEAR(date), T_1 FROM sensor_1_8 WHERE date>='%s' AND date<'%s' AND ok_1='0' ORDER BY date,time asc",time_from, time_to);
 	}
 	else
-		sprintf(query,"SELECT TIME_TO_SEC(date), DAYOFWEEK(date), DAYOFMONTH(date), DAYOFYEAR(date), temperature FROM temperatures WHERE modul_id='%d' AND sensor_id='%d' AND date>'%s' AND date<'%s' ORDER BY date asc", modul, sensor, time_from, time_to);
+		sprintf(query,"SELECT TIME_TO_SEC(CONVERT_TZ(date,'UTC','MET')), DAYOFWEEK(date), DAYOFMONTH(date), DAYOFYEAR(date), temperature FROM temperatures WHERE modul_id='%d' AND sensor_id='%d' AND CONVERT_TZ(date,'UTC','MET')>'%s' AND date<'%s' ORDER BY date asc", modul, sensor, time_from, time_to);
 	if(mysql_query(mysql_connection,query))
 	{
 		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
