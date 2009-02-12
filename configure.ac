@@ -36,6 +36,4 @@ PKG_CHECK_MODULES([gtk], gtk+-2.0 >= 2.12)
 AC_SUBST(gtk_LIBS)
 AC_SUBST(gtk_CFLAGS)
 
-
-AC_OUTPUT
 AC_OUTPUT(libhagraph.pc Makefile src/Makefile)
