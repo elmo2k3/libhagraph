@@ -36,4 +36,9 @@ PKG_CHECK_MODULES([gtk], gtk+-2.0 >= 2.12)
 AC_SUBST(gtk_LIBS)
 AC_SUBST(gtk_CFLAGS)
 
+#cairo
+PKG_CHECK_MODULES([cairo], cairo >= 1.6.0)
+AC_SUBST(cairo_LIBS)
+AC_SUBST(cairo_CFLAGS)
+
 AC_OUTPUT(libhagraph.pc Makefile src/Makefile)
