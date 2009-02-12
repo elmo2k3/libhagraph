@@ -4,10 +4,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <gd.h>
-#include <gdfontl.h>
-#include <gdfonts.h>
 #include <mysql/mysql.h>
+#include <cairo/cairo.h>
 #include <string.h>
 #include <time.h>
 #include <math.h>
@@ -21,13 +19,44 @@
 #define MYSQL_DB        "home_automation"
 #define MYSQL_DB_WS2000	"wetterstation"
 
+#define IMG_WIDTH_STD 800
+#define IMG_HEIGHT_STD 600
+
+#define X1_SKIP 40
+#define X2_SKIP 40
+#define Y1_SKIP 40
+#define Y2_SKIP 40
+#define X1_TO_TEXT 25
+#define X1_TO_TEXT2 5
+#define Y1_TO_TEXT 20
+#define TICK_OFFSET 10
+
+#define DRAW_VERTICAL_GRID
+#define DRAW_HORIZONTAL_GRID
+
+#define SECONDS_PER_DAY (60*60*24)
+#define SECONDS_PER_WEEK (SECONDS_PER_DAY*7)
+#define SECONDS_PER_MONTH (SECONDS_PER_DAY*31)
+#define SECONDS_PER_YEAR (SECONDS_PER_DAY*366)
+	
+#define WIDTH_FOR_ONE_HOUR ((IMG_WIDTH-X1_SKIP-X2_SKIP)/24)
+#define WIDTH_FOR_ONE_DAY_IN_WEEK ((IMG_WIDTH-X1_SKIP-X2_SKIP)/7)
+#define WIDTH_FOR_ONE_DAY_IN_MONTH ((IMG_WIDTH-X1_SKIP-X2_SKIP)/31)
+#define WIDTH_FOR_ONE_DAY_IN_YEAR ((IMG_WIDTH-X1_SKIP-X2_SKIP)/366)
+
+#define TB_DAY 1
+#define TB_WEEK 2
+#define TB_MONTH 3
+#define TB_YEAR 4
+
+
 static int IMG_WIDTH, IMG_HEIGHT;
 
-static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *title);
+static void drawXLegend(cairo_t *cr, char timebase, int color, unsigned char *title);
 static void getMaxMinValues(MYSQL *mysql_connection, const char *time_from, const char *time_to, float *max, int *sec_max, float *min, int modul, int sensor);
 static int transformY(float temperature, float max, float min);
-static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min);
-static void drawYLegend(gdImagePtr im, float temp_max, float temp_min, int color);
+static void addGraph(cairo_t *cr, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min);
+static void drawYLegend(cairo_t *cr, float temp_max, float temp_min, int color);
 static int decideView(char *time_from, char *time_to);
 
 int createGraph(const char *filename, int width, int heigth, const char *time_from,
@@ -36,8 +65,13 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	IMG_HEIGHT = heigth;
 	IMG_WIDTH = width;
 
-	gdImagePtr im;
-	FILE *pngout;
+	cairo_surface_t *surface;
+	cairo_t *cr;
+
+	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, IMG_WIDTH, IMG_HEIGHT);
+	
+	cr = cairo_create(surface);
+
 	int white, black, red, green, blue, purple, orange;
 	int sec_max;
 	int c;
@@ -47,7 +81,8 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	int view;
 	
 	view = decideView(time_from, time_to);
-	
+
+	view = TB_DAY;
 	MYSQL *mysql_connection;
 
 	mysql_connection = mysql_init(NULL);
@@ -58,16 +93,8 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	}
 	mysql_connection->reconnect=1;
 	
-	im = gdImageCreate(width, heigth);
-	white = gdImageColorAllocate(im,255,255,255); // Hintergrundfarbe
-	black = gdImageColorAllocate(im,0,0,0);
-	red = gdImageColorAllocate(im,255,0,0);
-	green = gdImageColorAllocate(im,0,255,0);
-	blue = gdImageColorAllocate(im,0,0,255);
-	purple = gdImageColorAllocate(im,255,0,255);
-	orange = gdImageColorAllocate(im,255,255,0);
 	
-	int colors[]={red,blue,green,purple,orange};
+//	int colors[]={red,blue,green,purple,orange};
 
 	for(c=0; c< numGraphs; c++)
 	{
@@ -79,15 +106,17 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
 	
 	for(c=0;c < numGraphs;c++)
 	{
-		addGraph(im, mysql_connection, colors[c], time_from, time_to, view, modul[c], sensor[c], temp_max, temp_min);
+		addGraph(cr, mysql_connection, 0, time_from, time_to, view, modul[c], sensor[c], temp_max, temp_min);
 	}
 	
-	drawXLegend(im, view, black, (unsigned char*)time_from);
-	drawYLegend(im, temp_max, temp_min, black);
-	pngout = fopen(filename, "wb");
-	gdImagePng(im, pngout);
-	fclose(pngout);
-	gdImageDestroy(im);
+	drawXLegend(cr, view, black, (unsigned char*)time_from);
+	drawYLegend(cr, temp_max, temp_min, black);
+	
+	cairo_surface_write_to_png(surface, "test.png");
+
+	cairo_destroy(cr);
+	cairo_surface_destroy(surface);
+
 	mysql_close(mysql_connection);
 	return 0;
 }
@@ -98,17 +127,18 @@ int createGraph(const char *filename, int width, int heigth, const char *time_fr
  * Möglichkeiten für timebase: TB_DAY, TB_WEEK, TB_MONTH, TB_YEAR
  * 
  */
-static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *title)
+static void drawXLegend(cairo_t *cr, char timebase, int color, unsigned char *title)
 {
 	int width;
 	int i,p;
 	char time[200];
 	
-	gdImageSetThickness(im, 2);
-	gdImageLine(im, X1_SKIP-5, IMG_HEIGHT-Y1_SKIP, IMG_WIDTH-X2_SKIP+5, IMG_HEIGHT-Y1_SKIP, color);
+	cairo_set_line_width(cr, 2);
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_move_to(cr, X1_SKIP-5, IMG_HEIGHT-Y1_SKIP);
+	cairo_line_to(cr, IMG_WIDTH-X2_SKIP+5, IMG_HEIGHT-Y1_SKIP);
+	cairo_stroke(cr);
 
-	gdImageSetThickness(im, 1);
-	
 	switch(timebase)
 	{
 		case TB_DAY: 	if(IMG_WIDTH<2000)
@@ -119,7 +149,11 @@ static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *
 				{
 					width = WIDTH_FOR_ONE_HOUR; i=0; p=25;
 				}
-				gdImageString(im,gdFontGetLarge(), IMG_WIDTH/2, 5, title,color); 
+				cairo_move_to(cr, IMG_WIDTH/2,5);
+				cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+				cairo_set_font_size(cr, 9.0);
+				cairo_show_text(cr, title);
+	//			gdImageString(im,gdFontGetLarge(), IMG_WIDTH/2, 5, title,color); 
 				break;
 		case TB_WEEK: 	width = WIDTH_FOR_ONE_DAY_IN_WEEK; i=0; p=8; break;
 		case TB_MONTH: 	width = WIDTH_FOR_ONE_DAY_IN_MONTH; i=0; p=32; break;
@@ -129,9 +163,14 @@ static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *
 	for(;i<p;i++)
 	{
 #ifdef DRAW_VERTICAL_GRID
-		gdImageDashedLine(im, i*width+X1_SKIP, Y2_SKIP, i*width+X1_SKIP, IMG_HEIGHT-Y1_SKIP+TICK_OFFSET, color);
+//		cairo_move_to(cr, i*width+X1_SKIP, Y2_SKIP);
+//		cairo_line_to(cr, i*width+X1_SKIP, IMG_HEIGHT-Y1_SKIP+TICK_OFFSET);	
+//		gdImageDashedLine(im, i*width+X1_SKIP, Y2_SKIP, i*width+X1_SKIP, IMG_HEIGHT-Y1_SKIP+TICK_OFFSET, color);
 #endif
-		gdImageLine(im, i*width+X1_SKIP,IMG_HEIGHT-Y1_SKIP, i*width+X1_SKIP, IMG_HEIGHT -Y1_SKIP, color);
+		cairo_move_to(cr, i*width+X1_SKIP, IMG_HEIGHT-Y1_SKIP);
+		cairo_line_to(cr, i*width+X1_SKIP, IMG_HEIGHT-Y1_SKIP);	
+		cairo_stroke(cr);
+//		gdImageLine(im, i*width+X1_SKIP,IMG_HEIGHT-Y1_SKIP, i*width+X1_SKIP, IMG_HEIGHT -Y1_SKIP, color);
 		switch(timebase)
 		{
 			case TB_DAY: 	if(IMG_WIDTH<2000)
@@ -143,32 +182,45 @@ static void drawXLegend(gdImagePtr im, char timebase, int color, unsigned char *
 			case TB_MONTH: 	if(i<31) sprintf(time,"%d",i+1); else strcpy(time,"\0"); break;
 			case TB_YEAR: 	sprintf(time,"%d",i+1); break;
 		}
-		gdImageString(im,gdFontGetSmall(), i*width+X1_SKIP-X1_TO_TEXT2,IMG_HEIGHT-Y1_TO_TEXT, time,color);
+		cairo_move_to(cr, i*width+X1_SKIP-X1_TO_TEXT2, IMG_HEIGHT - Y1_TO_TEXT);
+		cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+		cairo_set_font_size(cr, 9.0);
+		cairo_show_text(cr, time);
+//		gdImageString(im,gdFontGetSmall(), i*width+X1_SKIP-X1_TO_TEXT2,IMG_HEIGHT-Y1_TO_TEXT, time,color);
 	}
 	
 }
 
-static void drawYLegend(gdImagePtr im, float temp_max, float temp_min, int color)
+static void drawYLegend(cairo_t *cr, float temp_max, float temp_min, int color)
 {
 	float range = temp_max - temp_min;
 	int one_degree_height = (IMG_HEIGHT-Y1_SKIP-Y2_SKIP)/10;
 	int i;
 	char tstring[10];
 	
+	static const double dash[] = {1.0};
+
 	for(i=0;i<10;i++)
 	{
 #ifdef DRAW_HORIZONTAL_GRID
-		gdImageDashedLine(im,X1_SKIP-TICK_OFFSET,one_degree_height*i+Y2_SKIP ,IMG_WIDTH-X2_SKIP,one_degree_height*i+Y2_SKIP ,color);
+		//gdImageDashedLine(im,X1_SKIP-TICK_OFFSET,one_degree_height*i+Y2_SKIP ,IMG_WIDTH-X2_SKIP,one_degree_height*i+Y2_SKIP ,color);
 #endif
-		gdImageDashedLine(im,X1_SKIP-TICK_OFFSET,one_degree_height*i+Y2_SKIP ,X1_SKIP+TICK_OFFSET,one_degree_height*i+Y2_SKIP ,color);
+		cairo_set_dash(cr, dash, 1, 0);
+		cairo_move_to(cr, X1_SKIP-TICK_OFFSET, one_degree_height*i+Y2_SKIP);
+		cairo_line_to(cr, X1_SKIP+TICK_OFFSET,one_degree_height*i+Y2_SKIP);
+		cairo_stroke(cr);
 
 		
 		sprintf(tstring,"%d",(int)(temp_max-(range/10)*i));
-		gdImageString(im,gdFontGetSmall(), X1_SKIP-X1_TO_TEXT,one_degree_height*i+Y2_SKIP, tstring,color);
+		cairo_move_to(cr ,X1_SKIP-X1_TO_TEXT, one_degree_height*i+Y2_SKIP);
+		cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+		cairo_set_font_size(cr, 9.0);
+		cairo_show_text(cr, tstring);
+//		gdImageString(im,gdFontGetSmall(), X1_SKIP-X1_TO_TEXT,one_degree_height*i+Y2_SKIP, tstring,color);
 	}
 }
 
-static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min)
+static void addGraph(cairo_t *cr, MYSQL *mysql_connection, int color, const char *time_from, const char *time_to, char timebase, int modul, int sensor, float temp_max, float temp_min)
 {
 	char query[255];
 	MYSQL_RES *mysql_res;
@@ -201,6 +253,9 @@ static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const ch
 	}
 	mysql_res = mysql_use_result(mysql_connection);
 	int i=0;
+	
+	cairo_set_line_width(cr, 1);
+
 	while((mysql_row = mysql_fetch_row(mysql_res)))
 	{
 		
@@ -221,7 +276,6 @@ static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const ch
 		day_of_month = atoi(mysql_row[2]) -1;
 		day_of_year = atoi(mysql_row[3]) -1;
 	
-		gdImageSetThickness(im, 2);
 		switch(timebase)
 		{
 			case TB_DAY: 	x_div = SECONDS_PER_DAY; break;
@@ -241,8 +295,10 @@ static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const ch
 			x2 = seconds[1]/x_div*(IMG_WIDTH-X1_SKIP-X2_SKIP)+X1_SKIP;
 			y1 = transformY(temperature[0],temp_max,temp_min);
 			y2 = transformY(temperature[1],temp_max,temp_min);
-
-			gdImageLine(im,x1,y1,x2,y2,color);
+			cairo_move_to(cr, x1, y1);
+			cairo_line_to(cr, x2, y2);
+			cairo_stroke(cr);
+//			gdImageLine(im,x1,y1,x2,y2,color);
 		}
 		i++;
 		temperature[0]=temperature[1];
@@ -251,6 +307,7 @@ static void addGraph(gdImagePtr im, MYSQL *mysql_connection, int color, const ch
 	if(modul==4)
 		mysql_close(mysql_connection);
 	mysql_connection = mysql_helper_connection;
+
 }
 
 /* 
@@ -292,11 +349,11 @@ static void getMaxMinValues(MYSQL *mysql_connection, const char *time_from, cons
 	mysql_res = mysql_use_result(mysql_connection);
 	if(!(mysql_row = mysql_fetch_row(mysql_res)))
 		return;
-	mysql_free_result(mysql_res);
 	if(mysql_row[0]) s_max = atoi(mysql_row[0]);
 	else s_max = 0;
 	if(mysql_row[1]) t_max = atof(mysql_row[1]);
 	else t_max = 0;
+	mysql_free_result(mysql_res);
 	if(modul==4)
 		sprintf(query,"SELECT TIME_TO_SEC(time), T_1 FROM sensor_1_8 WHERE date>='%s' AND date<'%s' AND ok_1='0' ORDER BY T_1 asc LIMIT 1", time_from,  time_to);
 	else
@@ -308,11 +365,11 @@ static void getMaxMinValues(MYSQL *mysql_connection, const char *time_from, cons
 	}
 	mysql_res = mysql_use_result(mysql_connection);
 	mysql_row = mysql_fetch_row(mysql_res);
-	mysql_free_result(mysql_res);
 	if(mysql_row[0]) s_max = atoi(mysql_row[0]);
 	else s_min = 0;
 	if(mysql_row[1]) t_min = atof(mysql_row[1]);
 	else t_min = 0;
+	mysql_free_result(mysql_res);
 	//printf("%f %f \n",t_max,t_min);
 	if(*max == 0.0 && *min == 0.0)
 	{

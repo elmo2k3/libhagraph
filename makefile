@@ -1,8 +1,8 @@
-CFLAGS = -Wall -g
+CFLAGS = -Wall -fPIC -g
 LDFLAGS=-lgd -lmysqlclient -g
 
 libhagraph.so: libhagraph.o
-	$(CC) -shared libhagraph.c -o libhagraph.so $(CFLAGS) $(LDFLAGS)
+	$(CC) -shared -fPIC libhagraph.c -o libhagraph.so $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm libhagraph.so *.o
