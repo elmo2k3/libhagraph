@@ -48,12 +48,29 @@
 #define WIDTH_FOR_ONE_DAY_IN_YEAR ((double)(width-X1_SKIP-X2_SKIP)/365)
 #define WIDTH_FOR_ONE_MONTH_IN_YEAR ((double)(width-X1_SKIP-X2_SKIP)/12)
 
-static int colors[6][3] = {{255,0,0},
+static int colors[][3] = {{255,0,0},
+			{0,255,0},
+			{0,0,255},
+			{255,255,0},
+			{0,0,0},
+			{255,0,0},
+			{255,0,0},
+			{0,255,0},
+			{0,0,255},
+			{255,255,0},
+			{0,0,0},
+			{0,255,0},
+			{0,0,255},
+			{255,255,0},
+			{0,0,0},
+			{255,0,0},
+			{255,0,0},
 			{0,255,0},
 			{0,0,255},
 			{255,255,0},
 			{0,0,0},
 			{255,0,0}};
+
 
 static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int height);
 static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width, int height);
@@ -125,19 +142,37 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 		switch(graph->graphs[c].modul)
 		{
 			case 2: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"O.-E. Vorlauf     ");
+					strcpy(text,"O.-E. Vorlauf                                 ");
 				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"O.-E. Rücklauf    ");
+					strcpy(text,"O.-E. Rücklauf                              ");
 				break;
 			case 3: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"Bochum Wohnzimmer ");
+					strcpy(text,"Bochum Wohnzimmer                 ");
 				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"Bochum Aussen    ");
+					strcpy(text,"Bochum Aussen                    ");
 				break;
 			case 4: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"O.-E. Aussen    ");
+					strcpy(text,"O.-E. Aussen                            ");
 				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"O.-E. Wohnzimmer  ");
+					strcpy(text,"O.-E. Wohnzimmer                          ");
+				break;
+			case 5: if(graph->graphs[c].sensor == 0)
+					strcpy(text,"Bochum Heizkörper ist             ");
+				else if(graph->graphs[c].sensor == 1)
+					strcpy(text,"Bochum Heizkörper soll       ");
+				else if(graph->graphs[c].sensor == 2)
+					strcpy(text,"Bochum Heizkörper Ventil    ");
+				else if(graph->graphs[c].sensor == 3)
+					strcpy(text,"Bochum Heizkörper Spannung ");
+				break;
+			case 6: if(graph->graphs[c].sensor == 0)
+					strcpy(text,"O.-E. Heizkörper ist                   ");
+				else if(graph->graphs[c].sensor == 1)
+					strcpy(text,"O.-E. Heizkörper soll                ");
+				else if(graph->graphs[c].sensor == 2)
+					strcpy(text,"O.-E. Heizkörper Ventil            ");
+				else if(graph->graphs[c].sensor == 3)
+					strcpy(text,"O.-E. Heizkörper Spannung     ");
 				break;
 		}
 		sprintf(min_max_avg," Max: %2.02f Min: %2.02f Avg: %2.02f",
@@ -148,7 +183,7 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 
 		if(c%2) // 1 .. 3 .. 5 ..
 		{
-			text_x = X1_SKIP + 400;
+			text_x = X1_SKIP + 500;
 			text_y = height - Y1_TO_LEGEND + (c-1)*10;
 		}
 		else // 0 .. 2 .. 4 ..
