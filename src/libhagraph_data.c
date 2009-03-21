@@ -125,14 +125,14 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 	}
 	else
 	{
-		sprintf(query,"SELECT UNIX_TIMESTAMP(CONVERT_TZ(date,'UTC','MET')),\
-			temperature*1000 \
-			FROM temperatures WHERE modul_id='%d'\
-			AND sensor_id='%d' \
-			AND temperature!=85.0 \
-			AND CONVERT_TZ(date,'UTC','MET')>'%s'\
-			AND CONVERT_TZ(date,'UTC','MET')<'%s'\
-			ORDER BY date asc", modul, sensor, graph->time_from, graph->time_to);
+		sprintf(query,"SELECT date,\
+			value*1000 \
+			FROM modul_%d \
+			WHERE sensor='%d' \
+			AND value!=85.0 \
+			AND date>'%ld'\
+			AND date<'%ld'\
+			ORDER BY date asc", modul, sensor, graph->timestamp_from, graph->timestamp_to);
 	}
 
 	if(mysql_query(mysql_connection,query))
