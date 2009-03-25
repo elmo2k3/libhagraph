@@ -43,7 +43,6 @@ void initGraph(struct _graph_data *graph, const char *time_from, const char *tim
 	strncpy(graph->time_to, time_to, 10);
 	
 	graph->view = decideView(graph, graph->time_from, graph->time_to);
-	printf("decided view: %d\n",graph->view);	
 	graph->min = 999.99;
 	graph->max = -999.99;
 
@@ -227,7 +226,6 @@ static int decideView(struct _graph_data *graph, const char *time_from, const ch
 	to.tm_hour = 0;
 	to.tm_min = 0;
 	to.tm_sec = 0;
-	printf("year %d mon %d day %d\n",to.tm_year, to.tm_mon, to.tm_mday);
 
 	graph->timestamp_from = mktime(&from);
 	graph->timestamp_to = mktime(&to);

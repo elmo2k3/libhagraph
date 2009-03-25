@@ -68,6 +68,8 @@ static const int colors[][3] = {{255,0,0},
 			{0,0,255},
 			{255,255,0},
 			{0,0,0},
+			{0,255,0},
+			{0,0,255},
 			{255,0,0}};
 
 // map of names for module/sensor combinations
@@ -79,7 +81,8 @@ static const char *text_labels[][MAX_SENSORS_PER_MODULE] = {
 	{"Bochum Wohnzimmer", "Bochum Aussen", "", ""},
 	{"O.-E. Aussen","O.-E. Wohnzimmer", "", ""},
 	{"Bochum Heizkörper ist", "Bochum Heizkörper soll", "Bochum Heizkörper Ventil", "Bochum Heizkörper Spannung"},
-	{"O.-E. Heizkörper ist", "O.-E. Heizkörper soll", "O.-E. Heizkörper Ventil", "O.-E. Heizkörper Spannung"}
+	{"O.-E. Heizkörper ist", "O.-E. Heizkörper soll", "O.-E. Heizkörper Ventil", "O.-E. Heizkörper Spannung"},
+	{"", "Bochum Tür", "Bochum Sz Fenster"}
 };
 
 
@@ -140,7 +143,6 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 		if((int)extents.width > max_label_length)
 			max_label_length = (int)extents.width;
 	}
-	printf("max_label_length = %d\n",max_label_length);
 
 	for(c=0;c < graph->num_graphs;c++)
 	{
