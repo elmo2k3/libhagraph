@@ -74,6 +74,7 @@ static const int colors[][3] = {{255,0,0},
 
 static const char *text_labels[][MAX_SENSORS_PER_MODULE] = {
 	{"", "", "", ""},
+	{"", "", "", ""},
 	{"O.-E. Vorlauf", "O.-E. Rücklauf","", ""},
 	{"Bochum Wohnzimmer", "Bochum Aussen", "", ""},
 	{"O.-E. Aussen","O.-E. Wohnzimmer", "", ""},
