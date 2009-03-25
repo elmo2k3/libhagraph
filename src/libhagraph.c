@@ -39,8 +39,7 @@
 #define Y1_TO_LEGEND 60
 #define TICK_OFFSET 10
 
-#define DRAW_VERTICAL_GRID
-#define DRAW_HORIZONTAL_GRID
+#define MAX_SENSORS_PER_MODULE 4
 
 #define WIDTH_FOR_ONE_HOUR ((double)(width-X1_SKIP-X2_SKIP)/24)
 #define WIDTH_FOR_ONE_DAY_IN_WEEK ((double)(width-X1_SKIP-X2_SKIP)/7)
@@ -48,7 +47,7 @@
 #define WIDTH_FOR_ONE_DAY_IN_YEAR ((double)(width-X1_SKIP-X2_SKIP)/365)
 #define WIDTH_FOR_ONE_MONTH_IN_YEAR ((double)(width-X1_SKIP-X2_SKIP)/12)
 
-static int colors[][3] = {{255,0,0},
+static const int colors[][3] = {{255,0,0},
 			{0,255,0},
 			{0,0,255},
 			{255,255,0},
@@ -70,6 +69,17 @@ static int colors[][3] = {{255,0,0},
 			{255,255,0},
 			{0,0,0},
 			{255,0,0}};
+
+// map of names for module/sensor combinations
+
+static const char *text_labels[][MAX_SENSORS_PER_MODULE] = {
+	{"", "", "", ""},
+	{"O.-E. Vorlauf", "O.-E. Rücklauf","", ""},
+	{"Bochum Wohnzimmer", "Bochum Aussen", "", ""},
+	{"O.-E. Aussen","O.-E. Wohnzimmer", "", ""},
+	{"Bochum Heizkörper ist", "Bochum Heizkörper soll", "Bochum Heizkörper Ventil", "Bochum Heizkörper Spannung"},
+	{"O.-E. Heizkörper ist", "O.-E. Heizkörper soll", "O.-E. Heizkörper Ventil", "O.-E. Heizkörper Spannung"}
+};
 
 
 static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int height);
@@ -115,9 +125,21 @@ void drawGraphPng(char *filename, struct _graph_data *graph, int width, int heig
 static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int height)
 {
 	int c,i;
-	char text[100];
 	char min_max_avg[40];
 	int text_x, text_y;
+	int max_label_length = 0;
+	cairo_text_extents_t extents;
+	
+	cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+	cairo_set_font_size(cr, 12.0);
+
+	for(c=0; c < graph->num_graphs;c++)
+	{
+		cairo_text_extents(cr, text_labels[graph->graphs[c].modul][graph->graphs[c].sensor], &extents);
+		if((int)extents.width > max_label_length)
+			max_label_length = (int)extents.width;
+	}
+	printf("max_label_length = %d\n",max_label_length);
 
 	for(c=0;c < graph->num_graphs;c++)
 	{
@@ -139,51 +161,15 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 						graph->min, height));
 		}
 		cairo_stroke(cr);
-		switch(graph->graphs[c].modul)
-		{
-			case 2: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"O.-E. Vorlauf                                 ");
-				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"O.-E. Rücklauf                              ");
-				break;
-			case 3: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"Bochum Wohnzimmer                 ");
-				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"Bochum Aussen                    ");
-				break;
-			case 4: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"O.-E. Aussen                            ");
-				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"O.-E. Wohnzimmer                          ");
-				break;
-			case 5: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"Bochum Heizkörper ist             ");
-				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"Bochum Heizkörper soll       ");
-				else if(graph->graphs[c].sensor == 2)
-					strcpy(text,"Bochum Heizkörper Ventil    ");
-				else if(graph->graphs[c].sensor == 3)
-					strcpy(text,"Bochum Heizkörper Spannung ");
-				break;
-			case 6: if(graph->graphs[c].sensor == 0)
-					strcpy(text,"O.-E. Heizkörper ist                   ");
-				else if(graph->graphs[c].sensor == 1)
-					strcpy(text,"O.-E. Heizkörper soll                ");
-				else if(graph->graphs[c].sensor == 2)
-					strcpy(text,"O.-E. Heizkörper Ventil            ");
-				else if(graph->graphs[c].sensor == 3)
-					strcpy(text,"O.-E. Heizkörper Spannung     ");
-				break;
-		}
+		
 		sprintf(min_max_avg," Max: %2.02f Min: %2.02f Avg: %2.02f",
 				graph->graphs[c].max,
 				graph->graphs[c].min,
 				graph->graphs[c].average);
-		strcat(text, min_max_avg);
 
 		if(c%2) // 1 .. 3 .. 5 ..
 		{
-			text_x = X1_SKIP + 500;
+			text_x = X1_SKIP + (width/2);
 			text_y = height - Y1_TO_LEGEND + (c-1)*10;
 		}
 		else // 0 .. 2 .. 4 ..
@@ -196,10 +182,10 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 		cairo_stroke_preserve(cr);
 		cairo_fill(cr);
 		cairo_set_source_rgb(cr, 0,0,0);
-		cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-		cairo_set_font_size(cr, 12.0);
 		cairo_move_to(cr, text_x + 15, text_y + 10);
-		cairo_show_text(cr, text);
+		cairo_show_text(cr,text_labels[graph->graphs[c].modul][graph->graphs[c].sensor]);
+		cairo_move_to(cr, text_x + max_label_length + 25, text_y + 10);
+		cairo_show_text(cr,min_max_avg);
 	}
 	
 	drawXLegend(cr, graph->view, graph->time_from, width, height);
