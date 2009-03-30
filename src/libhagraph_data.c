@@ -219,6 +219,7 @@ static int decideView(struct _graph_data *graph, const char *time_from, const ch
 	from.tm_hour = 0;
 	from.tm_min = 0;
 	from.tm_sec = 0;
+	from.tm_isdst = -1;
 	
 	to.tm_year = atoi(strtok(c_to,"-")) -1900;
 	to.tm_mon = atoi(strtok(NULL,"-")) - 1;
@@ -226,6 +227,7 @@ static int decideView(struct _graph_data *graph, const char *time_from, const ch
 	to.tm_hour = 0;
 	to.tm_min = 0;
 	to.tm_sec = 0;
+	to.tm_isdst = -1;
 
 	graph->timestamp_from = mktime(&from);
 	graph->timestamp_to = mktime(&to);
