@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "libhagraph.h"
+#include "../version.h"
 
 #define width_STD 800
 #define height_STD 600
@@ -91,6 +92,11 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
 static void drawYLegend(cairo_t *cr, double temp_max, double temp_min, int width, int height);
 static double transformX(time_t x, int timebase, int width);
 static double transformY(double temperature, double max, double min, int height);
+
+char *libhagraphVersion(void)
+{
+	return VERSION;
+}
 
 void drawGraphGtk(GtkWidget *widget, struct _graph_data *graph)
 {
