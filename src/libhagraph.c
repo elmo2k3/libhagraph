@@ -32,13 +32,17 @@
 
 #define X1_SKIP 40
 #define X2_SKIP 40
-#define Y1_SKIP 100
+//#define Y1_SKIP 100
 #define Y2_SKIP 40
 #define X1_TO_TEXT 25
 #define X1_TO_TEXT2 5
-#define Y1_TO_TEXT 80
-#define Y1_TO_LEGEND 60
+//#define Y1_TO_TEXT 80
+//#define Y1_TO_LEGEND 60
 #define TICK_OFFSET 10
+
+static int Y1_SKIP;
+static int Y1_TO_TEXT;
+static int Y1_TO_LEGEND;
 
 #define MAX_SENSORS_PER_MODULE 4
 
@@ -139,6 +143,10 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 	int text_x, text_y;
 	int max_label_length = 0;
 	cairo_text_extents_t extents;
+	
+	Y1_SKIP = 10 * graph->num_graphs + 50;
+	Y1_TO_TEXT = Y1_SKIP - 20;
+	Y1_TO_LEGEND = Y1_SKIP - 40;
 	
 	cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
 	cairo_set_font_size(cr, 12.0);
