@@ -87,7 +87,8 @@ static const char *text_labels[][MAX_SENSORS_PER_MODULE] = {
 	{"O.-E. Aussen","O.-E. Wohnzimmer", "", ""},
 	{"Bochum Heizkörper ist", "Bochum Heizkörper soll", "Bochum Heizkörper Ventil", "Bochum Heizkörper Spannung"},
 	{"O.-E. Heizkörper ist", "O.-E. Heizkörper soll", "O.-E. Heizkörper Ventil", "O.-E. Heizkörper Spannung"},
-	{"", "Bochum Tür", "Bochum Sz Fenster"}
+	{"", "Bochum Tür", "Bochum Sz Fenster",""},
+	{"O.-E. Dachboden","","",""}
 };
 
 
