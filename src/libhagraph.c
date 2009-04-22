@@ -44,8 +44,6 @@ static int Y1_SKIP;
 static int Y1_TO_TEXT;
 static int Y1_TO_LEGEND;
 
-#define MAX_SENSORS_PER_MODULE 4
-
 #define WIDTH_FOR_ONE_HOUR ((double)(width-X1_SKIP-X2_SKIP)/24)
 #define WIDTH_FOR_ONE_DAY_IN_WEEK ((double)(width-X1_SKIP-X2_SKIP)/7)
 #define WIDTH_FOR_ONE_DAY_IN_MONTH ((double)(width-X1_SKIP-X2_SKIP)/31)
@@ -79,7 +77,7 @@ static const int colors[][3] = {{255,0,0},
 
 // map of names for module/sensor combinations
 
-static const char *text_labels[][MAX_SENSORS_PER_MODULE] = {
+const char *text_labels[9][MAX_SENSORS_PER_MODULE] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"O.-E. Vorlauf", "O.-E. Rücklauf","", ""},

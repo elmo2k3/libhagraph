@@ -27,6 +27,7 @@
 #endif
 #include <mysql/mysql.h>
 
+#include "libhagraph.h"
 #include "libhagraph_data.h"
 
 #ifdef _WIN32
@@ -315,4 +316,93 @@ int transformDate(char *time_from, char *time_to, const char *date, int view)
 	time_to[10] = '\0';
 
 	return 1;
+}
+
+int getLastValueTable(char *table,
+	char *mysql_host,
+	char *mysql_user,
+	char *mysql_password,
+	char *mysql_database,
+	char *mysql_database_ws2000)
+{
+	MYSQL_RES *mysql_res;
+	MYSQL_ROW mysql_row;
+	MYSQL *mysql_helper_connection;
+	MYSQL *mysql_connection;
+	double temperature;
+	char query[2048];
+	
+	mysql_connection = mysql_init(NULL);
+	mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
+	if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
+	{
+		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+		return;
+	}
+	mysql_connection->reconnect=1;
+	
+	mysql_helper_connection = mysql_connection;
+
+	char row[100];
+	int i, p;
+	for(i=0;i<9;i++)
+	{
+		for(p=0;p<MAX_SENSORS_PER_MODULE;p++)
+		{
+			if(text_labels[i][p] && strlen(text_labels[i][p]))
+			{
+				if(i==4)
+				{
+					mysql_connection = mysql_init(NULL);
+					mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
+					if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database_ws2000, 0, NULL, 0))
+					{
+						fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+						exit(0);
+					}
+					if(p == 0)
+						sprintf(query,"SELECT T_1*1000\
+						FROM sensor_1_8\
+						ORDER BY date desc, time desc LIMIT 1");
+					if(p == 1)
+						sprintf(query,"SELECT T_i*1000\
+						FROM inside\
+						ORDER BY date desc, time desc LIMIT 1");
+				}
+				else
+				{
+					sprintf(query,"SELECT value*1000\
+						FROM modul_%d \
+						WHERE sensor='%d' \
+						AND value!=85.0 \
+						ORDER BY date desc LIMIT 1", i,p);
+				}
+				if(mysql_query(mysql_connection,query))
+				{
+					fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+					exit(0);
+				}
+				mysql_res = mysql_store_result(mysql_connection);
+				mysql_row = mysql_fetch_row(mysql_res);
+				if(!mysql_row)
+				{	
+					fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+					exit(0);
+				}
+				temperature = (double)atoi(mysql_row[0])/1000;
+
+				sprintf(row,"%s: %3.2f\n",text_labels[i][p],temperature);
+				strcat(table,row);
+				if(i==4)
+				{
+					mysql_close(mysql_connection);
+					mysql_connection = mysql_helper_connection;
+				}
+				mysql_free_result(mysql_res);
+			}
+		}
+	}
+
+	mysql_close(mysql_connection);
+	return strlen(table);
 }
