@@ -62,7 +62,7 @@ void freeGraph(struct _graph_data *graph)
 	free(graph->graphs);
 }
 
-void addGraphData(struct _graph_data *graph, int modul, int sensor,
+int addGraphData(struct _graph_data *graph, int modul, int sensor,
 	char *mysql_host,
 	char *mysql_user,
 	char *mysql_password,
@@ -93,7 +93,7 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 	if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
 	{
 		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-		return;
+		return -1;
 	}
 	mysql_connection->reconnect=1;
 	
@@ -105,7 +105,7 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 		if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database_ws2000, 0, NULL, 0))
 		{
 			fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-			exit(0);
+			return -1;
 		}
 		if(sensor == 0)
 			sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
@@ -139,7 +139,7 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 	if(mysql_query(mysql_connection,query))
 	{
 		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-		exit(0);
+		return -1;
 	}
 	mysql_res = mysql_store_result(mysql_connection);
 
@@ -152,11 +152,12 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 		if(modul==4)
 			mysql_close(mysql_connection);
 		mysql_connection = mysql_helper_connection;
+		mysql_close(mysql_connection);
 #ifdef _DEBUG
 		printf("no points ..\n");
 		printf("empty query was: \n%s\n",query);
 #endif
-		return;
+		return -2;
 	}
 
 	graph->graphs[graph->num_graphs].num_points = num_points;
@@ -170,7 +171,7 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 		if(!mysql_row)
 		{	
 			fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-			exit(0);
+			return -1;
 		}
 		
 		if(mysql_row[0]) seconds	= (long long)atoi(mysql_row[0]);
@@ -203,7 +204,7 @@ void addGraphData(struct _graph_data *graph, int modul, int sensor,
 	graph->graphs[graph->num_graphs].average = average/num_points;
 	graph->num_graphs++;
 
-	return;
+	return 0;
 }
 
 static int decideView(struct _graph_data *graph, const char *time_from, const char *time_to)
@@ -244,7 +245,7 @@ static int decideView(struct _graph_data *graph, const char *time_from, const ch
 		return TB_YEAR;
 }
 	
-int transformDate(char *time_from, char *time_to, const char *date, int view)
+void transformDate(char *time_from, char *time_to, const char *date, int view)
 {
 	char c_date[255];
 	struct tm from, *to;
@@ -314,8 +315,6 @@ int transformDate(char *time_from, char *time_to, const char *date, int view)
 	strftime(time_to, 20, "%Y-%m-%d", to);
 	time_from[10] = '\0';
 	time_to[10] = '\0';
-
-	return 1;
 }
 
 int getLastValueTable(char *table,
@@ -337,7 +336,7 @@ int getLastValueTable(char *table,
 	if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
 	{
 		fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-		return;
+		return -1;
 	}
 	mysql_connection->reconnect=1;
 	
@@ -358,7 +357,7 @@ int getLastValueTable(char *table,
 					if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database_ws2000, 0, NULL, 0))
 					{
 						fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-						exit(0);
+						return -1;
 					}
 					if(p == 0)
 						sprintf(query,"SELECT T_1*1000\
@@ -380,14 +379,14 @@ int getLastValueTable(char *table,
 				if(mysql_query(mysql_connection,query))
 				{
 					fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-					exit(0);
+					return -1;
 				}
 				mysql_res = mysql_store_result(mysql_connection);
 				mysql_row = mysql_fetch_row(mysql_res);
 				if(!mysql_row)
 				{	
 					fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-					exit(0);
+					return -1;
 				}
 				temperature = (double)atoi(mysql_row[0])/1000;
 

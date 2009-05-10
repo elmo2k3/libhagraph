@@ -64,10 +64,10 @@ struct _graph_data
 	struct _one_graph_data *graphs;
 };
 
-extern int transformDate(char *time_from, char *time_to, const char *date, int view);
+extern void transformDate(char *time_from, char *time_to, const char *date, int view);
 extern void initGraph(struct _graph_data *graph, const char *time_from, const char *time_to);
 extern void freeGraph(struct _graph_data *graph);
-extern void addGraphData(struct _graph_data *graph, int modul, int sensor,
+extern int addGraphData(struct _graph_data *graph, int modul, int sensor,
 	char *mysql_host,
 	char *mysql_user,
 	char *mysql_password,

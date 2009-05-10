@@ -36,8 +36,6 @@
 #define Y2_SKIP 40
 #define X1_TO_TEXT 25
 #define X1_TO_TEXT2 5
-//#define Y1_TO_TEXT 80
-//#define Y1_TO_LEGEND 60
 #define TICK_OFFSET 10
 
 static int Y1_SKIP;
@@ -98,7 +96,7 @@ static double transformY(double temperature, double max, double min, int height)
 
 char *libhagraphVersion(void)
 {
-	return VERSION;
+	return LIBHAGRAPH_VERSION;
 }
 
 void drawGraphGtk(GtkWidget *widget, struct _graph_data *graph)
