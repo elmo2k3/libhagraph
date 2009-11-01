@@ -235,11 +235,11 @@ static int decideView(struct _graph_data *graph, const char *time_from, const ch
 	graph->timestamp_from = mktime(&from);
 	graph->timestamp_to = mktime(&to);
 
-	if(mktime(&to)-mktime(&from) <= SECONDS_PER_DAY)
+	if(mktime(&to)-mktime(&from) <= SECONDS_PER_DAY + SECONDS_PER_HOUR)
 		return TB_DAY;
-	else if(mktime(&to)-mktime(&from) <= SECONDS_PER_WEEK)
+	else if(mktime(&to)-mktime(&from) <= SECONDS_PER_WEEK + SECONDS_PER_HOUR)
 		return TB_WEEK;
-	else if(mktime(&to)-mktime(&from) <= SECONDS_PER_MONTH)
+	else if(mktime(&to)-mktime(&from) <= SECONDS_PER_MONTH + SECONDS_PER_HOUR)
 		return TB_MONTH;
 	else
 		return TB_YEAR;
