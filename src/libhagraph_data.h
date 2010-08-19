@@ -32,55 +32,55 @@
 #define TB_MONTH 3
 #define TB_YEAR 4
 
-	
+    
 extern const char *text_labels[9][MAX_SENSORS_PER_MODULE];
 
 struct _graph_point
 {
-	long long x;
-	double y;
+    long long x;
+    double y;
 };
 
 struct _one_graph_data
 {
-	int modul;
-	int sensor;
-	double min;
-	double max;
-	double average;
-	int num_points;
-	struct _graph_point *points;
+    int modul;
+    int sensor;
+    double min;
+    double max;
+    double average;
+    int num_points;
+    struct _graph_point *points;
 };
 
 struct _graph_data
 {
-	char time_from[20];
-	char time_to[20];
-	time_t timestamp_from;
-	time_t timestamp_to;
-	int view;
-	double min;
-	double max;
-	int num_graphs;
-	struct _one_graph_data *graphs;
+    char time_from[20];
+    char time_to[20];
+    time_t timestamp_from;
+    time_t timestamp_to;
+    int view;
+    double min;
+    double max;
+    int num_graphs;
+    struct _one_graph_data *graphs;
 };
 
 extern void transformDate(char *time_from, char *time_to, const char *date, int view);
 extern void initGraph(struct _graph_data *graph, const char *time_from, const char *time_to);
 extern void freeGraph(struct _graph_data *graph);
 extern int addGraphData(struct _graph_data *graph, int modul, int sensor,
-	char *mysql_host,
-	char *mysql_user,
-	char *mysql_password,
-	char *mysql_database,
-	char *mysql_database_ws2000);
+    char *mysql_host,
+    char *mysql_user,
+    char *mysql_password,
+    char *mysql_database,
+    char *mysql_database_ws2000);
 
 extern int getLastValueTable(char *table,
-	char *mysql_host,
-	char *mysql_user,
-	char *mysql_password,
-	char *mysql_database,
-	char *mysql_database_ws2000);
+    char *mysql_host,
+    char *mysql_user,
+    char *mysql_password,
+    char *mysql_database,
+    char *mysql_database_ws2000);
 
 #endif
 
