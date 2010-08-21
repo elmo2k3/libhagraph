@@ -29,6 +29,7 @@
 
 #include "libhagraph.h"
 #include "libhagraph_data.h"
+#include "graph_names.h"
 
 #ifdef _WIN32
 # define __isleap(year) \
@@ -331,6 +332,14 @@ int getLastValueTable(char *table,
     double temperature;
     char query[2048];
     
+    if(readGraphNameFile("/etc/hagraphs.conf"))
+    {
+        if(readGraphNameFile("hagraphs.conf"))
+        {
+            fprintf(stderr,"could not find hagraphs.conf");
+            return;
+        }
+    }
     mysql_connection = mysql_init(NULL);
     mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
     if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
@@ -344,11 +353,11 @@ int getLastValueTable(char *table,
 
     char row[100];
     int i, p;
-    for(i=0;i<9;i++)
+    for(i=0;i<MAX_MODULES;i++)
     {
-        for(p=0;p<MAX_SENSORS_PER_MODULE;p++)
+        for(p=0;p<MAX_SENSORS;p++)
         {
-            if(text_labels[i][p] && strlen(text_labels[i][p]))
+            if(getGraphName(i,p) && strlen(getGraphName(i,p)))
             {
                 if(i==4)
                 {
@@ -390,7 +399,7 @@ int getLastValueTable(char *table,
                 }
                 temperature = (double)atoi(mysql_row[0])/1000;
 
-                sprintf(row,"%s: %3.2f\n",text_labels[i][p],temperature);
+                sprintf(row,"%s: %3.2f\n",getGraphName(i,p),temperature);
                 strcat(table,row);
                 if(i==4)
                 {

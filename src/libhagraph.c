@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2009 Bjoern Biesenbach <bjoern@bjoern-b.de>
+ * Copyright (C) 2007-2010 Bjoern Biesenbach <bjoern@bjoern-b.de>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "libhagraph.h"
+#include "graph_names.h"
 #include "../version.h"
 
 #define width_STD 800
@@ -74,19 +75,6 @@ static const int colors[][3] = {{255,0,0},
             {255,0,0}};
 
 // map of names for module/sensor combinations
-
-const char *text_labels[9][MAX_SENSORS_PER_MODULE] = {
-    {"", "", "", ""},
-    {"", "", "", ""},
-    {"O.-E. Vorlauf", "O.-E. Rücklauf","", ""},
-    {"Bochum Wohnzimmer", "Bochum Aussen", "", ""},
-    {"O.-E. Aussen","O.-E. Wohnzimmer", "", ""},
-    {"Bochum Heizkörper ist", "Bochum Heizkörper soll", "Bochum Heizkörper Ventil", "Bochum Heizkörper Spannung"},
-    {"O.-E. Heizkörper ist", "O.-E. Heizkörper soll", "O.-E. Heizkörper Ventil", "O.-E. Heizkörper Spannung"},
-    {"", "Bochum Tür", "Bochum Sz Fenster",""},
-    {"O.-E. Dachboden","","",""}
-};
-
 
 static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int height);
 static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width, int height);
@@ -141,6 +129,15 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
     int max_label_length = 0;
     cairo_text_extents_t extents;
     
+    if(readGraphNameFile("/etc/hagraphs.conf"))
+    {
+        if(readGraphNameFile("hagraphs.conf"))
+        {
+            fprintf(stderr,"could not find hagraphs.conf");
+            return;
+        }
+    }
+    
     Y1_SKIP = 10 * graph->num_graphs + 50;
     Y1_TO_TEXT = Y1_SKIP - 20;
     Y1_TO_LEGEND = Y1_SKIP - 40;
@@ -150,7 +147,7 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
 
     for(c=0; c < graph->num_graphs;c++)
     {
-        cairo_text_extents(cr, text_labels[graph->graphs[c].modul][graph->graphs[c].sensor], &extents);
+        cairo_text_extents(cr, getGraphName(graph->graphs[c].modul,graph->graphs[c].sensor), &extents);
         if((int)extents.width > max_label_length)
             max_label_length = (int)extents.width;
     }
@@ -197,7 +194,7 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
         cairo_fill(cr);
         cairo_set_source_rgb(cr, 0,0,0);
         cairo_move_to(cr, text_x + 15, text_y + 10);
-        cairo_show_text(cr,text_labels[graph->graphs[c].modul][graph->graphs[c].sensor]);
+        cairo_show_text(cr,getGraphName(graph->graphs[c].modul,graph->graphs[c].sensor));
         cairo_move_to(cr, text_x + max_label_length + 25, text_y + 10);
         cairo_show_text(cr,min_max_avg);
     }

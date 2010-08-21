@@ -19,7 +19,6 @@
 #ifndef __DATA_H__
 #define __DATA_H__
 
-#define MAX_SENSORS_PER_MODULE 4
 
 #define SECONDS_PER_HOUR (60*60)
 #define SECONDS_PER_DAY (60*60*24)
@@ -33,8 +32,6 @@
 #define TB_YEAR 4
 
     
-extern const char *text_labels[9][MAX_SENSORS_PER_MODULE];
-
 struct _graph_point
 {
     long long x;
