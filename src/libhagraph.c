@@ -129,15 +129,6 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
     int max_label_length = 0;
     cairo_text_extents_t extents;
     
-    if(readGraphNameFile("/etc/hagraphs.conf"))
-    {
-        if(readGraphNameFile("hagraphs.conf"))
-        {
-            fprintf(stderr,"could not find hagraphs.conf");
-            return;
-        }
-    }
-    
     Y1_SKIP = 10 * graph->num_graphs + 50;
     Y1_TO_TEXT = Y1_SKIP - 20;
     Y1_TO_LEGEND = Y1_SKIP - 40;

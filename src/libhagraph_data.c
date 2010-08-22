@@ -332,14 +332,6 @@ int getLastValueTable(char *table,
     double temperature;
     char query[2048];
     
-    if(readGraphNameFile("/etc/hagraphs.conf"))
-    {
-        if(readGraphNameFile("hagraphs.conf"))
-        {
-            fprintf(stderr,"could not find hagraphs.conf");
-            return;
-        }
-    }
     mysql_connection = mysql_init(NULL);
     mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
     if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))

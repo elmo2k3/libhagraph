@@ -24,13 +24,7 @@
 
 static char **sensor_names = NULL;
 static int max_module = 0, max_sensor = 0;
-
-char *getGraphName(int module, int sensor)
-{
-    if(module > max_module || sensor > max_sensor || sensor_names==NULL)
-        return NULL;
-    return sensor_names[module*(max_sensor+1)+sensor];
-}
+static int initiated = 0;
 
 static void setGraphName(int module, int sensor, char *name)
 {
@@ -57,14 +51,13 @@ static void freeGraphNames()
     free(sensor_names);
     sensor_names = NULL;
 }
-
 /* returns
  *  0 on success
  *  1 file error
  *  2 allocate error
  *  3 module or sensor too big
  */
-int readGraphNameFile(char *filename)
+static int readGraphNameFile(char *filename)
 {
     FILE *file;
     int module, sensor;
@@ -131,5 +124,32 @@ int readGraphNameFile(char *filename)
     }
     fclose(file);
     return 0;
+}
+
+static int graphNamesInit(void)
+{
+    if(initiated)
+        return 2;
+    if(readGraphNameFile("/etc/hagraphs.conf"))
+    {
+        if(readGraphNameFile("hagraphs.conf"))
+        {
+            fprintf(stderr,"could not find hagraphs.conf");
+            return 1;
+        }
+    }
+    initiated = 1;
+    return 0;
+}   
+
+char *getGraphName(int module, int sensor)
+{
+    if(!initiated)
+        if(graphNamesInit())
+            return NULL;
+
+    if(module > max_module || sensor > max_sensor || sensor_names==NULL)
+        return NULL;
+    return sensor_names[module*(max_sensor+1)+sensor];
 }
 
