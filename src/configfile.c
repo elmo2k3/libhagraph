@@ -1,4 +1,6 @@
 #include <glib.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define CONFIG_FILE_NAME "hagraph.conf"
@@ -74,7 +76,6 @@ char *getDbValue(char *what, int db_num, int module, int sensor)
     if(temp_name)
     {
         strncpy(value,temp_name,sizeof(value));
-        printf("value = %s\n",value);
     }
     else
         return NULL;
