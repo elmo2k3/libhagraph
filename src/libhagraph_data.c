@@ -29,7 +29,7 @@
 
 #include "libhagraph.h"
 #include "libhagraph_data.h"
-#include "graph_names.h"
+#include "configfile.h"
 
 #ifdef _WIN32
 # define __isleap(year) \
@@ -63,16 +63,19 @@ void freeGraph(struct _graph_data *graph)
     free(graph->graphs);
 }
 
-int addGraphData(struct _graph_data *graph, int modul, int sensor,
-    char *mysql_host,
-    char *mysql_user,
-    char *mysql_password,
-    char *mysql_database,
-    char *mysql_database_ws2000)
+int addGraphData(struct _graph_data *graph, int modul, int sensor)
 {
     MYSQL_RES *mysql_res;
     MYSQL_ROW mysql_row;
     MYSQL *mysql_helper_connection;
+   
+    int db_num;
+    char mysql_host[255];
+    char mysql_user[255];
+    char mysql_password[255];
+    char mysql_database[255];
+    char mysql_database_ws2000[255];
+    char *temp_value;
 
     int i=0;
     int num_points;
@@ -86,6 +89,33 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor,
     graph->graphs = realloc(graph->graphs, sizeof(struct _one_graph_data)*(graph->num_graphs+1));
     graph->graphs[graph->num_graphs].modul = modul;
     graph->graphs[graph->num_graphs].sensor = sensor;
+
+    db_num = getDbNum(modul,sensor);
+    temp_value = getDbValue("host",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(mysql_host,temp_value,sizeof(mysql_host));
+    else
+        mysql_host[0] = '\0';
+    temp_value = getDbValue("user",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(mysql_user,temp_value,sizeof(mysql_user));
+    else
+        mysql_user[0] = '\0';
+    temp_value = getDbValue("pass",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(mysql_password,temp_value,sizeof(mysql_password));
+    else
+        mysql_password[0] = '\0';
+    temp_value = getDbValue("db",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(mysql_database,temp_value,sizeof(mysql_database));
+    else
+        mysql_database[0] = '\0';
+    temp_value = getDbValue("db_ws2000",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(mysql_database_ws2000,temp_value,sizeof(mysql_database_ws2000));
+    else
+        mysql_database_ws2000[0] = '\0';
     
     MYSQL *mysql_connection;
 
@@ -345,9 +375,9 @@ int getLastValueTable(char *table,
 
     char row[100];
     int i, p;
-    for(i=0;i<MAX_MODULES;i++)
+    for(i=0;i<10;i++)
     {
-        for(p=0;p<MAX_SENSORS;p++)
+        for(p=0;p<10;p++)
         {
             if(getGraphName(i,p) && strlen(getGraphName(i,p)))
             {

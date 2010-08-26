@@ -65,19 +65,14 @@ struct _graph_data
 extern void transformDate(char *time_from, char *time_to, const char *date, int view);
 extern void initGraph(struct _graph_data *graph, const char *time_from, const char *time_to);
 extern void freeGraph(struct _graph_data *graph);
-extern int addGraphData(struct _graph_data *graph, int modul, int sensor,
-    char *mysql_host,
-    char *mysql_user,
-    char *mysql_password,
-    char *mysql_database,
-    char *mysql_database_ws2000);
+extern int addGraphData(struct _graph_data *graph, int modul, int sensor);
 
-extern int getLastValueTable(char *table,
-    char *mysql_host,
-    char *mysql_user,
-    char *mysql_password,
-    char *mysql_database,
-    char *mysql_database_ws2000);
+//extern int getLastValueTable(char *table,
+//    char *mysql_host,
+//    char *mysql_user,
+//    char *mysql_password,
+//    char *mysql_database,
+//    char *mysql_database_ws2000);
 
 #endif
 

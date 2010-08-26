@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "libhagraph.h"
-#include "graph_names.h"
+#include "configfile.h"
 #include "../version.h"
 
 #define width_STD 800

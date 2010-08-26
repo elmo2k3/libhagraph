@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libhagraph.la
-libhagraph_la_SOURCES = libhagraph.c libhagraph_data.c graph_names.c
-libhagraphinclude_HEADERS = libhagraph.h libhagraph_data.h graph_names.h
+libhagraph_la_SOURCES = libhagraph.c libhagraph_data.c configfile.c
+libhagraphinclude_HEADERS = libhagraph.h libhagraph_data.h configfile.h
 libhagraphincludedir=$(includedir)/libhagraph-0.2/libhagraph/
 
 LIBS = @gtk_LIBS@ @cairo_LIBS@
