@@ -25,6 +25,8 @@
 extern void drawGraphGtk(GtkWidget *widget, struct _graph_data *graph);
 extern void drawGraphPng(char *filename, struct _graph_data *graph, int width, int height);
 extern char *libhagraphVersion(void);
+extern void libhagraphSetTransparent(int value);
+extern void libhagraphSetInverted(int value);
 
 #endif
 

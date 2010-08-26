@@ -43,6 +43,9 @@ static int Y1_SKIP;
 static int Y1_TO_TEXT;
 static int Y1_TO_LEGEND;
 
+static int transparent = 0;
+static int inverted = 0;
+
 #define WIDTH_FOR_ONE_HOUR ((double)(width-X1_SKIP-X2_SKIP)/24)
 #define WIDTH_FOR_ONE_DAY_IN_WEEK ((double)(width-X1_SKIP-X2_SKIP)/7)
 #define WIDTH_FOR_ONE_DAY_IN_MONTH ((double)(width-X1_SKIP-X2_SKIP)/31)
@@ -111,7 +114,20 @@ void drawGraphPng(char *filename, struct _graph_data *graph, int width, int heig
 
     cairo_rectangle(cr, 0,0,width,height);
     cairo_stroke_preserve(cr);
-    cairo_set_source_rgb(cr, 255,255,255);
+    if(transparent)
+    {
+        if(inverted)
+            cairo_set_source_rgba(cr, 0,0,0,0);
+        else
+            cairo_set_source_rgba(cr, 255,255,255,0);
+    }
+    else
+    {
+        if(inverted)
+            cairo_set_source_rgba(cr, 0,0,0,1);
+        else
+            cairo_set_source_rgba(cr, 255,255,255,1);
+    }
     cairo_fill(cr);
 
     drawGraph(cr, graph, width, height);
@@ -183,7 +199,10 @@ static void drawGraph(cairo_t *cr, struct _graph_data *graph, int width, int hei
         cairo_rectangle(cr, text_x, text_y, 10, 10);
         cairo_stroke_preserve(cr);
         cairo_fill(cr);
-        cairo_set_source_rgb(cr, 0,0,0);
+        if(inverted)
+            cairo_set_source_rgb(cr, 255,255,255);
+        else
+            cairo_set_source_rgb(cr, 0,0,0);
         cairo_move_to(cr, text_x + 15, text_y + 10);
         cairo_show_text(cr,getGraphName(graph->graphs[c].modul,graph->graphs[c].sensor));
         cairo_move_to(cr, text_x + max_label_length + 25, text_y + 10);
@@ -209,7 +228,10 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
     strcpy(time, title);
 
     cairo_set_line_width(cr, 2);
-    cairo_set_source_rgb(cr, 0, 0, 0);
+    if(inverted)
+        cairo_set_source_rgb(cr, 255,255,255);
+    else
+        cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_move_to(cr, X1_SKIP-5, height-Y1_SKIP);
     cairo_line_to(cr, width-X2_SKIP+5, height-Y1_SKIP);
     cairo_stroke(cr);
@@ -340,5 +362,15 @@ static double transformX(time_t x, int timebase, int width)
                 break; 
     }
     return (double)(x/x_div*(width-X1_SKIP-X2_SKIP)+X1_SKIP);
+}
+
+void libhagraphSetInverted(int value)
+{
+    inverted = value;
+}
+
+void libhagraphSetTransparent(int value)
+{
+    transparent = value;
 }
 
