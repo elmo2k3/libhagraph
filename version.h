@@ -1,1 +1,1 @@
-#define LIBHAGRAPH_VERSION "v0.2.4-18-gf47cd6b"
+#define LIBHAGRAPH_VERSION "v0.2.4-19-gdf99d26"
