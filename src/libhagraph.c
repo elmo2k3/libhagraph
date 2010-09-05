@@ -37,6 +37,7 @@
 #define Y2_SKIP 40
 #define X1_TO_TEXT 25
 #define X1_TO_TEXT2 10
+#define X1_TO_TEXT_MONTH 3
 #define TICK_OFFSET 10
 
 static int Y1_SKIP;
@@ -298,7 +299,10 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
                     break;
 
         }
-        cairo_move_to(cr, i*space+X1_SKIP-X1_TO_TEXT2, height - Y1_TO_TEXT);
+        if(timebase == TB_DAY)
+            cairo_move_to(cr, i*space+X1_SKIP-X1_TO_TEXT2, height - Y1_TO_TEXT);
+        else
+            cairo_move_to(cr, i*space+X1_SKIP-X1_TO_TEXT_MONTH, height - Y1_TO_TEXT);
         cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
         cairo_set_font_size(cr, 9.0);
         cairo_show_text(cr, time);
