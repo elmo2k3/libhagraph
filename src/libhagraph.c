@@ -36,7 +36,7 @@
 //#define Y1_SKIP 100
 #define Y2_SKIP 40
 #define X1_TO_TEXT 25
-#define X1_TO_TEXT2 5
+#define X1_TO_TEXT2 10
 #define TICK_OFFSET 10
 
 static int Y1_SKIP;
@@ -275,9 +275,9 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
         switch(timebase)
         {
             case TB_DAY:    if(width<2000)
-                            sprintf(time,"%02d:00:00",i*2); 
+                            sprintf(time,"%02d:00",i*2); 
                     else
-                            sprintf(time,"%02d:00:00",i);
+                            sprintf(time,"%02d:00",i);
                             break;
             case TB_WEEK:   if(i<7) sprintf(time,"%d",i+1); else strcpy(time,"\0");  break;
             case TB_MONTH:  if(i<31) sprintf(time,"%d",i+1); else strcpy(time,"\0"); break;
