@@ -41,6 +41,7 @@ char *getGraphName(int module, int sensor) // not thread safe
     temp_name = g_key_file_get_string(key_file,"sensors", key_name, NULL);
 
     strncpy(graph_name,temp_name,sizeof(graph_name));
+    g_free(graph_name);
 
     return graph_name;
 }
@@ -76,6 +77,7 @@ char *getDbValue(char *what, int db_num, int module, int sensor)
     if(temp_name)
     {
         strncpy(value,temp_name,sizeof(value));
+        g_free(temp_name);
     }
     else
         return NULL;
