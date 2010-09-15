@@ -41,7 +41,7 @@ char *getGraphName(int module, int sensor) // not thread safe
     temp_name = g_key_file_get_string(key_file,"sensors", key_name, NULL);
 
     strncpy(graph_name,temp_name,sizeof(graph_name));
-    g_free(graph_name);
+    g_free(temp_name);
 
     return graph_name;
 }
