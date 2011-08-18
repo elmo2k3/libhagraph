@@ -146,9 +146,33 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
             AND date<'%s'\
             AND ok_1='0'\
             ORDER BY date,time asc",graph->time_from, graph->time_to);
-        if(sensor == 1)
+        else if(sensor == 1)
             sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
             T_i*1000\
+            FROM inside\
+            WHERE date>='%s'\
+            AND date<'%s'\
+            AND ok='0'\
+            ORDER BY date,time asc",graph->time_from, graph->time_to);
+        else if(sensor == 2)
+            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+            H_1*1000\
+            FROM sensor_1_8\
+            WHERE date>='%s'\
+            AND date<'%s'\
+            AND ok_1='0'\
+            ORDER BY date,time asc",graph->time_from, graph->time_to);
+        else if(sensor == 3)
+            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+            H_i*1000\
+            FROM inside\
+            WHERE date>='%s'\
+            AND date<'%s'\
+            AND ok='0'\
+            ORDER BY date,time asc",graph->time_from, graph->time_to);
+        else if(sensor == 4)
+            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+            p_i*1000\
             FROM inside\
             WHERE date>='%s'\
             AND date<'%s'\
@@ -394,8 +418,20 @@ int getLastValueTable(char *table,
                         sprintf(query,"SELECT T_1*1000\
                         FROM sensor_1_8\
                         ORDER BY date desc, time desc LIMIT 1");
-                    if(p == 1)
+                    else if(p == 1)
                         sprintf(query,"SELECT T_i*1000\
+                        FROM inside\
+                        ORDER BY date desc, time desc LIMIT 1");
+                    else if(p == 2)
+                        sprintf(query,"SELECT H_1*1000\
+                        FROM sensor_1_8\
+                        ORDER BY date desc, time desc LIMIT 1");
+                    else if(p == 3)
+                        sprintf(query,"SELECT H_i*1000\
+                        FROM inside\
+                        ORDER BY date desc, time desc LIMIT 1");
+                    else if(p == 4)
+                        sprintf(query,"SELECT P_i*1000\
                         FROM inside\
                         ORDER BY date desc, time desc LIMIT 1");
                 }
