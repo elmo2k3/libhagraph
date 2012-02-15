@@ -31,14 +31,14 @@
 #define width_STD 800
 #define height_STD 600
 
-#define X1_SKIP 40
-#define X2_SKIP 40
+#define X1_SKIP 40.0
+#define X2_SKIP 40.0
 //#define Y1_SKIP 100
-#define Y2_SKIP 40
-#define X1_TO_TEXT 25
-#define X1_TO_TEXT2 10
-#define X1_TO_TEXT_MONTH 3
-#define TICK_OFFSET 10
+#define Y2_SKIP 40.0
+#define X1_TO_TEXT 25.0
+#define X1_TO_TEXT2 10.0
+#define X1_TO_TEXT_MONTH 3.0
+#define TICK_OFFSET 10.0
 
 static int Y1_SKIP;
 static int Y1_TO_TEXT;
