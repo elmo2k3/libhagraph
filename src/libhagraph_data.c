@@ -26,6 +26,7 @@
 #include <mysql/my_global.h>
 #endif
 #include <mysql/mysql.h>
+#include <libpq-fe.h>
 
 #include "libhagraph.h"
 #include "libhagraph_data.h"
@@ -68,13 +69,21 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
     MYSQL_RES *mysql_res;
     MYSQL_ROW mysql_row;
     MYSQL *mysql_helper_connection;
+
+    PGconn *pgconn = NULL;
+    PGresult *pgres;
+
+    char conninfo[300];
+    const char timeout = 2;
    
     int db_num;
-    char mysql_host[255];
-    char mysql_user[255];
-    char mysql_password[255];
-    char mysql_database[255];
-    char mysql_database_ws2000[255];
+    char db_host[255];
+    char db_user[255];
+    char db_password[255];
+    char db_database[255];
+    char db_database_ws2000[255];
+    char db_type[255];
+    char db_sslmode[255];
     char *temp_value;
 
     int i=0;
@@ -93,173 +102,267 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
     db_num = getDbNum(modul,sensor);
     temp_value = getDbValue("host",db_num,modul,sensor);
     if(temp_value)
-        strncpy(mysql_host,temp_value,sizeof(mysql_host));
+        strncpy(db_host,temp_value,sizeof(db_host));
     else
-        mysql_host[0] = '\0';
+        db_host[0] = '\0';
     temp_value = getDbValue("user",db_num,modul,sensor);
     if(temp_value)
-        strncpy(mysql_user,temp_value,sizeof(mysql_user));
+        strncpy(db_user,temp_value,sizeof(db_user));
     else
-        mysql_user[0] = '\0';
+        db_user[0] = '\0';
     temp_value = getDbValue("pass",db_num,modul,sensor);
     if(temp_value)
-        strncpy(mysql_password,temp_value,sizeof(mysql_password));
+        strncpy(db_password,temp_value,sizeof(db_password));
     else
-        mysql_password[0] = '\0';
+        db_password[0] = '\0';
     temp_value = getDbValue("db",db_num,modul,sensor);
     if(temp_value)
-        strncpy(mysql_database,temp_value,sizeof(mysql_database));
+        strncpy(db_database,temp_value,sizeof(db_database));
     else
-        mysql_database[0] = '\0';
+        db_database[0] = '\0';
     temp_value = getDbValue("db_ws2000",db_num,modul,sensor);
     if(temp_value)
-        strncpy(mysql_database_ws2000,temp_value,sizeof(mysql_database_ws2000));
+        strncpy(db_database_ws2000,temp_value,sizeof(db_database_ws2000));
     else
-        mysql_database_ws2000[0] = '\0';
+        db_database_ws2000[0] = '\0';
+    temp_value = getDbValue("type",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(db_type,temp_value,sizeof(db_type));
+    else
+        db_type[0] = '\0';
+    temp_value = getDbValue("sslmode",db_num,modul,sensor);
+    if(temp_value)
+        strncpy(db_sslmode,temp_value,sizeof(db_sslmode));
+    else
+        db_sslmode[0] = '\0';
     
-    MYSQL *mysql_connection;
+    if(strcmp(db_type,"psql") == 0)
+    {
+        sprintf(conninfo,"dbname = %s host = %s user = %s sslmode = %s password= %s",
+            db_database,
+            db_host,
+            db_user,
+            db_sslmode,
+            db_password);
 
-    mysql_connection = mysql_init(NULL);
-    mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
-    if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
-    {
-        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-        return -1;
+        pgconn = PQconnectdb(conninfo);
+        if (PQstatus(pgconn) != CONNECTION_OK)
+        {
+            fprintf(stderr, "Connection to database failed: %s",
+                    PQerrorMessage(pgconn));
+            PQfinish(pgconn);
+            return -1;
+        }
+
+        sprintf(query,"SELECT EXTRACT(EPOCH FROM date),\
+            value*1000 \
+            FROM modul_%02d%02d \
+            WHERE date>to_timestamp(%ld)\
+            AND date<to_timestamp(%ld)\
+            ORDER BY date asc", modul, sensor, graph->timestamp_from, graph->timestamp_to);
+//        sprintf(query,"SELECT EXTRACT(EPOCH FROM date),\
+//            value*1000 \
+//            FROM \"Bochum Aussen Taupunkt\" \
+//            WHERE date>to_timestamp(%ld)\
+//            AND date<to_timestamp(%ld)\
+//            ORDER BY date asc", graph->timestamp_from, graph->timestamp_to);
+
+        pgres = PQexec(pgconn, query);
+        if (PQresultStatus(pgres) != PGRES_TUPLES_OK)
+        {
+            fprintf(stderr, "failed: %s", PQerrorMessage(pgconn));
+            PQclear(pgres);
+            PQfinish(pgconn);
+            return -1;
+        }
+
+        num_points = PQntuples(pgres);
+        if(num_points == 0)
+        {
+            PQclear(pgres);
+            PQfinish(pgconn);
+            return -2;
+        }
+        graph->graphs[graph->num_graphs].num_points = num_points;
+        graph->graphs[graph->num_graphs].points = malloc(sizeof(struct _graph_point)*num_points);
+
+        struct _graph_point *helper = graph->graphs[graph->num_graphs].points;
+        
+        for (i = 0; i < PQntuples(pgres); i++)
+        {
+            seconds = (long long)atoi(PQgetvalue(pgres,i,0));
+            temperature = (double)atoi(PQgetvalue(pgres,i,1))/1000;
+            helper[i].x = seconds;
+            helper[i].y = temperature;
+            average += temperature;
+            if(temperature > max)
+                max = temperature;
+            if(temperature < min)
+                min = temperature;
+        }
+        PQclear(pgres);
+        PQfinish(pgconn);
+
+        if(min < graph->min)
+            graph->min = floor(min/10.0)*10;
+        if(max > graph->max)
+            graph->max = ceil(max/10.0)*10; 
+        
+        graph->graphs[graph->num_graphs].min = min;
+        graph->graphs[graph->num_graphs].max = max;
+        graph->graphs[graph->num_graphs].average = average/num_points;
+        graph->num_graphs++;
+
+    return 0;
+
     }
-    mysql_connection->reconnect=1;
-    
-    mysql_helper_connection = mysql_connection;
-    if(modul==4)
+    else // mysql
     {
+        
+        MYSQL *mysql_connection;
+
         mysql_connection = mysql_init(NULL);
         mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
-        if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database_ws2000, 0, NULL, 0))
+        if (!mysql_real_connect(mysql_connection, db_host, db_user, db_password, db_database, 0, NULL, 0))
         {
             fprintf(stderr, "%s\n", mysql_error(mysql_connection));
             return -1;
         }
-        if(sensor == 0)
-            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
-            T_1*1000\
-            FROM sensor_1_8\
-            WHERE date>='%s'\
-            AND date<'%s'\
-            AND ok_1='0'\
-            ORDER BY date,time asc",graph->time_from, graph->time_to);
-        else if(sensor == 1)
-            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
-            T_i*1000\
-            FROM inside\
-            WHERE date>='%s'\
-            AND date<'%s'\
-            AND ok='0'\
-            ORDER BY date,time asc",graph->time_from, graph->time_to);
-        else if(sensor == 2)
-            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
-            H_1*1000\
-            FROM sensor_1_8\
-            WHERE date>='%s'\
-            AND date<'%s'\
-            AND ok_1='0'\
-            ORDER BY date,time asc",graph->time_from, graph->time_to);
-        else if(sensor == 3)
-            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
-            H_i*1000\
-            FROM inside\
-            WHERE date>='%s'\
-            AND date<'%s'\
-            AND ok='0'\
-            ORDER BY date,time asc",graph->time_from, graph->time_to);
-        else if(sensor == 4)
-            sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
-            p_i*1000\
-            FROM inside\
-            WHERE date>='%s'\
-            AND date<'%s'\
-            AND ok='0'\
-            ORDER BY date,time asc",graph->time_from, graph->time_to);
-    }
-    else
-    {
-        sprintf(query,"SELECT date,\
-            value*1000 \
-            FROM modul_%d \
-            WHERE sensor='%d' \
-            AND value!=85.0 \
-            AND date>'%ld'\
-            AND date<'%ld'\
-            ORDER BY date asc", modul, sensor, graph->timestamp_from, graph->timestamp_to);
-    }
-
-    if(mysql_query(mysql_connection,query))
-    {
-        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-        return -1;
-    }
-    mysql_res = mysql_store_result(mysql_connection);
-
-    /* lets decide how much memory to allocate */
-
-    num_points = mysql_num_rows(mysql_res);
-
-    if(!num_points)
-    {
-        if(modul==4)
-            mysql_close(mysql_connection);
-        mysql_connection = mysql_helper_connection;
-        mysql_close(mysql_connection);
-#ifdef _DEBUG
-        printf("no points ..\n");
-        printf("empty query was: \n%s\n",query);
-#endif
-        return -2;
-    }
-
-    graph->graphs[graph->num_graphs].num_points = num_points;
-    graph->graphs[graph->num_graphs].points = malloc(sizeof(struct _graph_point)*num_points);
-
-    struct _graph_point *helper = graph->graphs[graph->num_graphs].points;
-    
-    while((mysql_row = mysql_fetch_row(mysql_res)))
-    {
+        mysql_connection->reconnect=1;
         
-        if(!mysql_row)
-        {   
+        mysql_helper_connection = mysql_connection;
+        if(modul==4)
+        {
+            mysql_connection = mysql_init(NULL);
+            mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
+            if (!mysql_real_connect(mysql_connection, db_host, db_user, db_password, db_database_ws2000, 0, NULL, 0))
+            {
+                fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+                return -1;
+            }
+            if(sensor == 0)
+                sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+                T_1*1000\
+                FROM sensor_1_8\
+                WHERE date>='%s'\
+                AND date<'%s'\
+                AND ok_1='0'\
+                ORDER BY date,time asc",graph->time_from, graph->time_to);
+            else if(sensor == 1)
+                sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+                T_i*1000\
+                FROM inside\
+                WHERE date>='%s'\
+                AND date<'%s'\
+                AND ok='0'\
+                ORDER BY date,time asc",graph->time_from, graph->time_to);
+            else if(sensor == 2)
+                sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+                H_1*1000\
+                FROM sensor_1_8\
+                WHERE date>='%s'\
+                AND date<'%s'\
+                AND ok_1='0'\
+                ORDER BY date,time asc",graph->time_from, graph->time_to);
+            else if(sensor == 3)
+                sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+                H_i*1000\
+                FROM inside\
+                WHERE date>='%s'\
+                AND date<'%s'\
+                AND ok='0'\
+                ORDER BY date,time asc",graph->time_from, graph->time_to);
+            else if(sensor == 4)
+                sprintf(query,"SELECT UNIX_TIMESTAMP(CONCAT(date,\" \",time)),\
+                p_i*1000\
+                FROM inside\
+                WHERE date>='%s'\
+                AND date<'%s'\
+                AND ok='0'\
+                ORDER BY date,time asc",graph->time_from, graph->time_to);
+        }
+        else
+        {
+            sprintf(query,"SELECT date,\
+                value*1000 \
+                FROM modul_%d \
+                WHERE sensor='%d' \
+                AND value!=85.0 \
+                AND date>'%ld'\
+                AND date<'%ld'\
+                ORDER BY date asc", modul, sensor, graph->timestamp_from, graph->timestamp_to);
+        }
+
+        if(mysql_query(mysql_connection,query))
+        {
             fprintf(stderr, "%s\n", mysql_error(mysql_connection));
             return -1;
         }
-        
-        if(mysql_row[0]) seconds    = (long long)atoi(mysql_row[0]);
-        
-        if(strcmp(mysql_row[1],"0.0")) temperature = (double)atoi(mysql_row[1])/1000;
+        mysql_res = mysql_store_result(mysql_connection);
 
-        helper[i].x = seconds;
-        helper[i].y = temperature;
-        average += temperature;
-        if(temperature > max)
-            max = temperature;
-        if(temperature < min)
-            min = temperature;
-        i++;
-    }
-    if(modul==4)
+        /* lets decide how much memory to allocate */
+
+        num_points = mysql_num_rows(mysql_res);
+
+        if(!num_points)
+        {
+            if(modul==4)
+                mysql_close(mysql_connection);
+            mysql_connection = mysql_helper_connection;
+            mysql_close(mysql_connection);
+#ifdef _DEBUG
+            printf("no points ..\n");
+            printf("empty query was: \n%s\n",query);
+#endif
+            return -2;
+        }
+
+        graph->graphs[graph->num_graphs].num_points = num_points;
+        graph->graphs[graph->num_graphs].points = malloc(sizeof(struct _graph_point)*num_points);
+
+        struct _graph_point *helper = graph->graphs[graph->num_graphs].points;
+        
+        while((mysql_row = mysql_fetch_row(mysql_res)))
+        {
+            
+            if(!mysql_row)
+            {   
+                fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+                return -1;
+            }
+            
+            if(mysql_row[0]) seconds    = (long long)atoi(mysql_row[0]);
+            
+            if(strcmp(mysql_row[1],"0.0")) temperature = (double)atoi(mysql_row[1])/1000;
+
+            helper[i].x = seconds;
+            helper[i].y = temperature;
+            average += temperature;
+            if(temperature > max)
+                max = temperature;
+            if(temperature < min)
+                min = temperature;
+            i++;
+        }
+        if(modul==4)
+            mysql_close(mysql_connection);
+        mysql_connection = mysql_helper_connection;
+
+        mysql_free_result(mysql_res);
         mysql_close(mysql_connection);
-    mysql_connection = mysql_helper_connection;
 
-    mysql_free_result(mysql_res);
-    mysql_close(mysql_connection);
+        if(min < graph->min)
+            graph->min = floor(min/10.0)*10;
+        if(max > graph->max)
+            graph->max = ceil(max/10.0)*10; 
+        
+        graph->graphs[graph->num_graphs].min = min;
+        graph->graphs[graph->num_graphs].max = max;
+        graph->graphs[graph->num_graphs].average = average/num_points;
+        graph->num_graphs++;
 
-    if(min < graph->min)
-        graph->min = floor(min/10.0)*10;
-    if(max > graph->max)
-        graph->max = ceil(max/10.0)*10; 
-    
-    graph->graphs[graph->num_graphs].min = min;
-    graph->graphs[graph->num_graphs].max = max;
-    graph->graphs[graph->num_graphs].average = average/num_points;
-    graph->num_graphs++;
-
-    return 0;
+        return 0;
+    }
 }
 
 static int decideView(struct _graph_data *graph, const char *time_from, const char *time_to)
@@ -373,102 +476,103 @@ void transformDate(char *time_from, char *time_to, const char *date, int view)
 }
 
 int getLastValueTable(char *table,
-    char *mysql_host,
-    char *mysql_user,
-    char *mysql_password,
-    char *mysql_database,
-    char *mysql_database_ws2000)
+    char *db_host,
+    char *db_user,
+    char *db_password,
+    char *db_database,
+    char *db_database_ws2000)
 {
-    MYSQL_RES *mysql_res;
-    MYSQL_ROW mysql_row;
-    MYSQL *mysql_helper_connection;
-    MYSQL *mysql_connection;
-    double temperature;
-    char query[2048];
-    
-    mysql_connection = mysql_init(NULL);
-    mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
-    if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database, 0, NULL, 0))
-    {
-        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-        return -1;
-    }
-    mysql_connection->reconnect=1;
-    
-    mysql_helper_connection = mysql_connection;
-
-    char row[100];
-    int i, p;
-    for(i=0;i<10;i++)
-    {
-        for(p=0;p<10;p++)
-        {
-            if(getGraphName(i,p) && strlen(getGraphName(i,p)))
-            {
-                if(i==4)
-                {
-                    mysql_connection = mysql_init(NULL);
-                    mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
-                    if (!mysql_real_connect(mysql_connection, mysql_host, mysql_user, mysql_password, mysql_database_ws2000, 0, NULL, 0))
-                    {
-                        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-                        return -1;
-                    }
-                    if(p == 0)
-                        sprintf(query,"SELECT T_1*1000\
-                        FROM sensor_1_8\
-                        ORDER BY date desc, time desc LIMIT 1");
-                    else if(p == 1)
-                        sprintf(query,"SELECT T_i*1000\
-                        FROM inside\
-                        ORDER BY date desc, time desc LIMIT 1");
-                    else if(p == 2)
-                        sprintf(query,"SELECT H_1*1000\
-                        FROM sensor_1_8\
-                        ORDER BY date desc, time desc LIMIT 1");
-                    else if(p == 3)
-                        sprintf(query,"SELECT H_i*1000\
-                        FROM inside\
-                        ORDER BY date desc, time desc LIMIT 1");
-                    else if(p == 4)
-                        sprintf(query,"SELECT P_i*1000\
-                        FROM inside\
-                        ORDER BY date desc, time desc LIMIT 1");
-                }
-                else
-                {
-                    sprintf(query,"SELECT value*1000\
-                        FROM modul_%d \
-                        WHERE sensor='%d' \
-                        AND value!=85.0 \
-                        ORDER BY date desc LIMIT 1", i,p);
-                }
-                if(mysql_query(mysql_connection,query))
-                {
-                    fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-                    return -1;
-                }
-                mysql_res = mysql_store_result(mysql_connection);
-                mysql_row = mysql_fetch_row(mysql_res);
-                if(!mysql_row)
-                {   
-                    fprintf(stderr, "%s\n", mysql_error(mysql_connection));
-                    return -1;
-                }
-                temperature = (double)atoi(mysql_row[0])/1000;
-
-                sprintf(row,"%s: %3.2f\n",getGraphName(i,p),temperature);
-                strcat(table,row);
-                if(i==4)
-                {
-                    mysql_close(mysql_connection);
-                    mysql_connection = mysql_helper_connection;
-                }
-                mysql_free_result(mysql_res);
-            }
-        }
-    }
-
-    mysql_close(mysql_connection);
-    return strlen(table);
+    return 0;
+//    MYSQL_RES *mysql_res;
+//    MYSQL_ROW mysql_row;
+//    MYSQL *mysql_helper_connection;
+//    MYSQL *mysql_connection;
+//    double temperature;
+//    char query[2048];
+//    
+//    mysql_connection = mysql_init(NULL);
+//    mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
+//    if (!mysql_real_connect(mysql_connection, db_host, db_user, db_password, db_database, 0, NULL, 0))
+//    {
+//        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+//        return -1;
+//    }
+//    mysql_connection->reconnect=1;
+//    
+//    mysql_helper_connection = mysql_connection;
+//
+//    char row[100];
+//    int i, p;
+//    for(i=0;i<10;i++)
+//    {
+//        for(p=0;p<10;p++)
+//        {
+//            if(getGraphName(i,p) && strlen(getGraphName(i,p)))
+//            {
+//                if(i==4)
+//                {
+//                    mysql_connection = mysql_init(NULL);
+//                    mysql_options(mysql_connection, MYSQL_OPT_COMPRESS, 0);
+//                    if (!mysql_real_connect(mysql_connection, db_host, db_user, db_password, db_database_ws2000, 0, NULL, 0))
+//                    {
+//                        fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+//                        return -1;
+//                    }
+//                    if(p == 0)
+//                        sprintf(query,"SELECT T_1*1000\
+//                        FROM sensor_1_8\
+//                        ORDER BY date desc, time desc LIMIT 1");
+//                    else if(p == 1)
+//                        sprintf(query,"SELECT T_i*1000\
+//                        FROM inside\
+//                        ORDER BY date desc, time desc LIMIT 1");
+//                    else if(p == 2)
+//                        sprintf(query,"SELECT H_1*1000\
+//                        FROM sensor_1_8\
+//                        ORDER BY date desc, time desc LIMIT 1");
+//                    else if(p == 3)
+//                        sprintf(query,"SELECT H_i*1000\
+//                        FROM inside\
+//                        ORDER BY date desc, time desc LIMIT 1");
+//                    else if(p == 4)
+//                        sprintf(query,"SELECT P_i*1000\
+//                        FROM inside\
+//                        ORDER BY date desc, time desc LIMIT 1");
+//                }
+//                else
+//                {
+//                    sprintf(query,"SELECT value*1000\
+//                        FROM modul_%d \
+//                        WHERE sensor='%d' \
+//                        AND value!=85.0 \
+//                        ORDER BY date desc LIMIT 1", i,p);
+//                }
+//                if(mysql_query(mysql_connection,query))
+//                {
+//                    fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+//                    return -1;
+//                }
+//                mysql_res = mysql_store_result(mysql_connection);
+//                mysql_row = mysql_fetch_row(mysql_res);
+//                if(!mysql_row)
+//                {   
+//                    fprintf(stderr, "%s\n", mysql_error(mysql_connection));
+//                    return -1;
+//                }
+//                temperature = (double)atoi(mysql_row[0])/1000;
+//
+//                sprintf(row,"%s: %3.2f\n",getGraphName(i,p),temperature);
+//                strcat(table,row);
+//                if(i==4)
+//                {
+//                    mysql_close(mysql_connection);
+//                    mysql_connection = mysql_helper_connection;
+//                }
+//                mysql_free_result(mysql_res);
+//            }
+//        }
+//    }
+//
+//    mysql_close(mysql_connection);
+//    return strlen(table);
 }
