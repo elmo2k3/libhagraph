@@ -138,12 +138,23 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
     
     if(strcmp(db_type,"psql") == 0)
     {
-        sprintf(conninfo,"dbname = %s host = %s user = %s sslmode = %s password= %s",
-            db_database,
-            db_host,
-            db_user,
-            db_sslmode,
-            db_password);
+        if(strlen(db_password))
+        {
+            sprintf(conninfo,"dbname = %s host = %s user = %s sslmode = %s password= %s",
+                db_database,
+                db_host,
+                db_user,
+                db_sslmode,
+                db_password);
+        }
+        else // no password
+        {
+            sprintf(conninfo,"dbname = %s host = %s user = %s sslmode = %s",
+                db_database,
+                db_host,
+                db_user,
+                db_sslmode);
+        }
 
         pgconn = PQconnectdb(conninfo);
         if (PQstatus(pgconn) != CONNECTION_OK)
