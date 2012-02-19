@@ -40,6 +40,8 @@
 #define X1_TO_TEXT_MONTH 3.0
 #define TICK_OFFSET 10.0
 
+#define DASH_LENGTH 3.0
+
 static int Y1_SKIP;
 static int Y1_TO_TEXT;
 static int Y1_TO_LEGEND;
@@ -225,6 +227,7 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
     int i,p;
     char time[200];
     double space;
+    double dashes = DASH_LENGTH; // dash length
 
     strcpy(time, title);
 
@@ -265,6 +268,8 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, 14.0);
     cairo_show_text(cr, time);
+
+    cairo_set_dash(cr, &dashes, 1, 0.0); // activate dashes
         
     for(;i<p;i++)
     {
@@ -307,6 +312,7 @@ static void drawXLegend(cairo_t *cr, char timebase, const char *title, int width
         cairo_set_font_size(cr, 9.0);
         cairo_show_text(cr, time);
     }
+    cairo_set_dash(cr, &dashes, 0, 0.0); // disable dashes
     
 }
 
@@ -316,7 +322,9 @@ static void drawYLegend(cairo_t *cr, double temp_max, double temp_min, int width
     int one_degree_height = (height-Y1_SKIP-Y2_SKIP)/10;
     int i;
     char tstring[10];
+    double dashes = DASH_LENGTH; // dash length
     
+    cairo_set_dash(cr, &dashes, 1, 0.0); // activate dashes
     for(i=0;i<10;i++)
     {
         cairo_move_to(cr, X1_SKIP-TICK_OFFSET, one_degree_height*i+Y2_SKIP);
@@ -330,6 +338,7 @@ static void drawYLegend(cairo_t *cr, double temp_max, double temp_min, int width
         cairo_set_font_size(cr, 9.0);
         cairo_show_text(cr, tstring);
     }
+    cairo_set_dash(cr, &dashes, 0, 0.0); // disable dashes
 }
 
 /* 
