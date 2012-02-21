@@ -110,6 +110,7 @@ void drawGraphGtk(GtkWidget *widget, struct _graph_data *graph)
 static cairo_status_t writeGraphToStdout(void *name, unsigned char *data, unsigned int length)
 {
     fwrite(data,1,length,stdout);
+    return CAIRO_STATUS_SUCCESS;
 }
 
 void drawGraphPng(char *filename, struct _graph_data *graph, int width, int height)
