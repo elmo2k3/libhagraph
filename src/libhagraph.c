@@ -140,7 +140,7 @@ void drawGraphPng(char *filename, struct _graph_data *graph, int width, int heig
 
     drawGraph(cr, graph, width, height);
     
-    if((strcmp,filename,"stdout")==0) // write to stdout
+    if(strcmp(filename,"stdout") == 0) // write to stdout
         cairo_surface_write_to_png_stream(surface, writeGraphToStdout,"stdout");
     else
         cairo_surface_write_to_png(surface, filename);
