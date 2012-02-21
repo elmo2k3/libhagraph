@@ -107,6 +107,11 @@ void drawGraphGtk(GtkWidget *widget, struct _graph_data *graph)
     cairo_destroy(cr);
 }
 
+static cairo_status_t writeGraphToStdout(void *name, unsigned char *data, unsigned int length)
+{
+    fwrite(data,1,length,stdout);
+}
+
 void drawGraphPng(char *filename, struct _graph_data *graph, int width, int height)
 {
     cairo_surface_t *surface;
@@ -135,7 +140,10 @@ void drawGraphPng(char *filename, struct _graph_data *graph, int width, int heig
 
     drawGraph(cr, graph, width, height);
     
-    cairo_surface_write_to_png(surface, filename);
+    if((strcmp,filename,"stdout")==0) // write to stdout
+        cairo_surface_write_to_png_stream(surface, writeGraphToStdout,"stdout");
+    else
+        cairo_surface_write_to_png(surface, filename);
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
 }
