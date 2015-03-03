@@ -64,7 +64,7 @@ void freeGraph(struct _graph_data *graph)
     free(graph->graphs);
 }
 
-int addGraphData(struct _graph_data *graph, int modul, int sensor)
+int addGraphData(struct _graph_data *graph, int modul, int sensor, int mavg_num)
 {
     MYSQL_RES *mysql_res;
     MYSQL_ROW mysql_row;
@@ -86,9 +86,12 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
     char db_sslmode[255];
     char *temp_value;
 
-    int i=0;
+    int i=0,p;
     int num_points;
     double seconds, temperature;
+    double moving_average[mavg_num];
+    int mavg_pos;
+    double mavg_val;
     char query[1024];
     double max = -999.9;
     double min = 999.9;
@@ -199,12 +202,30 @@ int addGraphData(struct _graph_data *graph, int modul, int sensor)
 
         struct _graph_point *helper = graph->graphs[graph->num_graphs].points;
         
+        mavg_pos = -1;
         for (i = 0; i < PQntuples(pgres); i++)
         {
             seconds = (long long)atoi(PQgetvalue(pgres,i,0));
             temperature = (double)atoi(PQgetvalue(pgres,i,1))/1000;
+            if(mavg_pos == -1)
+            {
+                for(p=0;p<mavg_num;p++)
+                {
+                    moving_average[p] = temperature;
+                }
+                mavg_pos = 0;
+            }
+            moving_average[mavg_pos] = temperature;
+            if(++mavg_pos == mavg_num)
+                mavg_pos = 0;
+            mavg_val = 0.0;
+            for(p=0;p<mavg_num;p++)
+            {
+                mavg_val += moving_average[p];
+            }
             helper[i].x = seconds;
-            helper[i].y = temperature;
+            helper[i].y = mavg_val / mavg_num;
+            //helper[i].y = temperature;
             average += temperature;
             if(temperature > max)
                 max = temperature;
